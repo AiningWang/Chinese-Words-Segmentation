@@ -1,88 +1,115 @@
 # -*- coding: utf-8 -*-
+
+"""
+    Chinese word segmentation
+    Author: Aining Wang
+    Date:   07/2017
+"""
+
 import re
 import sys
+from MathTool import entropy, Counter
 
-LENGTH      = 4
+
+WORD_LEN    = [1,2,3,4,5,6]
 PMI_VALUE   = 24
-INPUT_FILE  = "news_Feb.txt"
-
-
-class Preprosess:
-    def __init__(self):
-        self.word_freq_dict = {}
-
-
-    def wordFreq(self, text):
-        """
-            get all single word freq
-        """
-        text    = text.decode("utf8")
-        # store chinese
-        pattern = re.compile(u"([\u4e00-\u9fff]+)")
-        chinese = pattern.findall(text)
-        text    = ""
-        for sentence in chinese:
-            text += sentence
-        # get word freq
-        for i in range(len(text)):
-            if text[i] not in self.word_freq_dict:
-                self.word_freq_dict[text[i]] = 1
-            else:
-                self.word_freq_dict[text[i]] += 1
-
-
-    def testWordFreq(self):
-        """
-            test func wordFreq
-        """
-        file1 = open("news_Feb.txt", "r")
-        file2 = open("outcome.txt", "w")
-        # get test text
-        text = ""
-        i = 0
-        for line in file1:
-            i += 1
-            if i == 100:
-                break
-            text += line
-        self.wordFreq(text)
-        # output outcome
-        for key in self.word_freq_dict:
-            file2.write((key + " " + str(c.word_freq_dict[key]) + "\t").encode("utf8"))
-        file2.close()
-
-
-
-
+INPUT_FILE  = "AI_news.txt"
 
 
 class WordInfo:
-    def __init__(self, word):
-        self.word   = word
-        self.freq   = 0
-        self.PMI    = 0
-        self.left   = []
-        self.right  = []
-        self.left_entropy   = 0
-        self.right_entropy  = 0
+    
+    def __init__(self, word, freq):
+        self.word           = word
+        self.length         = len(word)
+        self.freq           = freq
+        self.aggregation    = 0    # Internal aggregation degree
+        self.left_dict      = {}   # {left word: freq}
+        self.right_dict     = {}   # {right word: freq}
+        self.entropy        = 0    # External using freedom
+        self.score          = 0
+    
+
+    def turnDictToLict(self):
+        for word in self.left_dict:
+            self.left_prob_list.append(self.left_dict[word])
+        for word in self.right_dict:
+            self.right_prob_list.append(self.right_dict[word])
+
+
+    def calculateEntropy(self):
+        # turn dict tp list
+        left_prob_list = []
+        right_prob_list = []
+        for word in self.left_dict:
+            left_prob_list.append(self.left_dict[word])
+        for word in self.right_dict:
+            right_prob_list.append(self.right_dict[word])
+        # calculate entropy
+        self.entropy = min(entropy(left_prob_list), entropy(right_prob_list))
+
+
 
 
 class WordSegment:
+    
     def __init__(self):
-        self.score = 0
+        self.candidate_dict = {}  # length 2-5
+        self.text           = ""
+        self.word_freq      = {}  # count word freq (length between 1-6)
 
 
+    def getInputText(self):
+        file        = open(INPUT_FILE, "r")
+        pattern     = re.compile(u"([\u4e00-\u9fff]+)")
+        origin_text = ""
+        for line in file:
+            origin_text += line
+        # get chinese words
+        origin_text = origin_text.decode("utf8")
+        chinese     = pattern.findall(origin_text)
+        for sentence in chinese:
+            self.text += sentence
 
 
+    def countWordFreq(self):
+        self.getInputText()
+        # count word freq
+        for word_length in WORD_LEN:
+            print word_length
+            for i in range(len(self.text) - word_length):
+                Counter(self.text[i : i+word_length], self.word_freq)
+        # output outcome
+        file2 = open("word_freq.txt", "w")
+        for key in self.word_freq:
+            file2.write((key + " " + str(self.word_freq[key]) + "\t").encode("utf8"))
+        file2.close()
+
+
+    def setCandidateWord(self):
+        # set words as candidates (freq > 1, 1 < len < 6):
+        for word in self.word_freq:
+            if len(word) > 1 and len(word) < 6 and self.word_freq[word] > 1:
+                self.candidate_dict[word] = WordInfo(word, self.word_freq[word])
+        # output outcome
+        file = open("candidate.txt", "w")
+        for key in self.candidate_dict:
+            file.write((key + " " + str(self.candidate_dict[key].freq) + "\t").encode("utf8"))
+        file.close()
+
+
+    def collectLeftRightDict(self):
+        for word in self.word_freq:
+            if len(word) > 2:
+                # find right words
+                if word[: -1] in self.candidate_dict:
+                    self.candidate_dict[word[: -1]].right_dict[word[-1]] = self.word_freq[word[-1]]
+                # find left words
+                elif word[1 :] in self.candidate_dict:
+                    self.candidate_dict[word[1 :]].left_dict[word[0]] = self.word_freq[word[0]]
 
 
 # test
-c = Preprosess()
-c.wordFreq(text)
-
-
-
-
-
-
+c = WordSegment()
+c.countWordFreq()
+c.setCandidateWord()
 
