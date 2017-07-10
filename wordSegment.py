@@ -12,7 +12,9 @@ from MathTool import entropy, Counter
 
 
 WORD_LEN    = [1,2,3,4,5,6]
-PMI_VALUE   = 24
+ENT_VALUE   = 1000
+AGG_VALUE   = 1000
+FREQ        = 5
 INPUT_FILE  = "AI_news.txt"
 
 
@@ -37,7 +39,7 @@ class WordInfo:
 
 
     def calculateEntropy(self):
-        # turn dict tp list
+        # turn dict to list
         left_prob_list = []
         right_prob_list = []
         for word in self.left_dict:
@@ -48,6 +50,15 @@ class WordInfo:
         self.entropy = min(entropy(left_prob_list), entropy(right_prob_list))
 
 
+    def calculateAggregation(self, word_freq_dict):
+        ent_record = []
+        for i in range(self.length - 1):
+            word1 = self.word[i + 1 :]
+            word2 = self.word[: i + 1]
+            ent = entropy([word_freq_dict[self.word], word_freq_dict[word1] * word_freq_dict[word2]])
+            ent_record.append(ent)
+        self.aggregation = min(ent_record)
+
 
 
 class WordSegment:
@@ -56,6 +67,7 @@ class WordSegment:
         self.candidate_dict = {}  # length 2-5
         self.text           = ""
         self.word_freq      = {}  # count word freq (length between 1-6)
+        self.new_word_list  = []
 
 
     def getInputText(self):
@@ -108,8 +120,37 @@ class WordSegment:
                     self.candidate_dict[word[1 :]].left_dict[word[0]] = self.word_freq[word[0]]
 
 
+    def calculateCandidateScore(self):
+        # calculate entropy and aggregation
+        for word in self.candidate_dict:
+            self.candidate_dict[word].calculateEntropy()
+            self.candidate_dict[word].calculateAggregation(self.word_freq)
+        # filter candidate
+        self.new_word_list = []
+        for word in self.candidate_dict:
+            info = self.candidate_dict[word]
+            if info.freq >= FREQ and info.aggregation >= AGG_VALUE and info.entropy >= ENT_VALUE:
+                self.new_word_list.append(word)
+
+
+    def execute(self):
+        self.countWordFreq()
+        self.setCandidateWord()
+        self.collectLeftRightDict()
+        self.calculateCandidateScore()
+        # output outcome
+        file = open("AI_new_word.txt", "w")
+        for word in self.new_word_list:
+            info = self.candidate_dict[word]
+            file.write(word.encode("utf8") + "\n")
+            print  str(info.freq) + "\t" + str(info.aggregation)  + "\t" + str(info.entropy)
+        file.close()
+
+
 # test
 c = WordSegment()
-c.countWordFreq()
-c.setCandidateWord()
+c.execute()
+
+
+
 
