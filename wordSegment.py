@@ -11,11 +11,16 @@ import sys
 from MathTool import entropy, Counter
 
 
-WORD_LEN    = [1,2,3,4,5,6]
-ENT_VALUE   = 1000
+WORD_LEN    = [1,2,3,4,5,6,7]
+CANDI_MIN   = 2
+CANDI_MAX   = 6
+ENT_VALUE   = 10000
 AGG_VALUE   = 1000
-FREQ        = 5
+SCORE_LIMIT = 10**9
+FREQ_MIN    = 5
+FREQ_MAX    = 10
 INPUT_FILE  = "AI_news.txt"
+STOPWORD_FILE = "stopwords.txt"
 
 
 class WordInfo:
@@ -67,6 +72,7 @@ class WordSegment:
         self.candidate_dict = {}  # length 2-5
         self.text           = ""
         self.word_freq      = {}  # count word freq (length between 1-6)
+        self.stopwords_list = []
         self.new_word_list  = []
 
 
@@ -100,13 +106,30 @@ class WordSegment:
     def setCandidateWord(self):
         # set words as candidates (freq > 1, 1 < len < 6):
         for word in self.word_freq:
-            if len(word) > 1 and len(word) < 6 and self.word_freq[word] > 1:
+            if len(word) >= CANDI_MIN and len(word) <= CANDI_MIN and self.word_freq[word] >= FREQ_MIN:
                 self.candidate_dict[word] = WordInfo(word, self.word_freq[word])
         # output outcome
         file = open("candidate.txt", "w")
         for key in self.candidate_dict:
             file.write((key + " " + str(self.candidate_dict[key].freq) + "\t").encode("utf8"))
         file.close()
+    
+
+    def delectStopWord(self):
+        # store stopwords in dict
+        file = open(STOPWORD_FILE, "r")
+        del_list = []
+        for line in file:
+            line = line.strip("\n").decode("utf8")
+            self.stopwords_list.append(line)
+        # delect stop word in candidate dict
+        for word in self.candidate_dict:
+            for stopword in self.stopwords_list:
+                if stopword in word:
+                    del_list.append(word)
+        for del_word in del_list:
+            if del_word in self.candidate_dict:
+                del self.candidate_dict[del_word]
 
 
     def collectLeftRightDict(self):
@@ -123,26 +146,29 @@ class WordSegment:
     def calculateCandidateScore(self):
         # calculate entropy and aggregation
         for word in self.candidate_dict:
-            self.candidate_dict[word].calculateEntropy()
-            self.candidate_dict[word].calculateAggregation(self.word_freq)
+            info = self.candidate_dict[word]
+            info.calculateEntropy()
+            info.calculateAggregation(self.word_freq)
+            info.score = info.aggregation * info.entropy
         # filter candidate
         self.new_word_list = []
         for word in self.candidate_dict:
             info = self.candidate_dict[word]
-            if info.freq >= FREQ and info.aggregation >= AGG_VALUE and info.entropy >= ENT_VALUE:
+            if info.freq >= FREQ_MIN and info.freq <= FREQ_MAX and info.score >=SCORE_LIMIT:
                 self.new_word_list.append(word)
 
 
     def execute(self):
         self.countWordFreq()
         self.setCandidateWord()
+        self.delectStopWord()
         self.collectLeftRightDict()
         self.calculateCandidateScore()
         # output outcome
         file = open("AI_new_word.txt", "w")
         for word in self.new_word_list:
             info = self.candidate_dict[word]
-            file.write(word.encode("utf8") + "\n")
+            file.write(word.encode("utf8") + "\t")
             print  str(info.freq) + "\t" + str(info.aggregation)  + "\t" + str(info.entropy)
         file.close()
 
