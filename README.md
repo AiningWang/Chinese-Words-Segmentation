@@ -14,4 +14,7 @@ Different from English, there are no space between Chinese words. This project a
 #### Word Frequency
 ##### If the word frequency is too high, it might be stop words.
 ##### If the word frequency is too low, it may not be as word. 
-* In this projct, I set FREQ_MIN = 5, FREQ_MAX = 10. The word between FREQ_MIN and FREQ_MAX can be new words candidates
+* In this project, I set FREQ_MIN = 5, FREQ_MAX = 10. The word between FREQ_MIN and FREQ_MAX can be new words candidates
+## Usage
+* Change INPUT_FILE in wordSegment.py
+* python 2

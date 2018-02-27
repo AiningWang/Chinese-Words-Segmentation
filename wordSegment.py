@@ -106,7 +106,7 @@ class WordSegment:
     def setCandidateWord(self):
         # set words as candidates (freq > 1, 1 < len < 6):
         for word in self.word_freq:
-            if len(word) >= CANDI_MIN and len(word) <= CANDI_MIN and self.word_freq[word] >= FREQ_MIN:
+            if len(word) >= CANDI_MIN and len(word) <= CANDI_MAX and self.word_freq[word] >= FREQ_MIN:
                 self.candidate_dict[word] = WordInfo(word, self.word_freq[word])
         # output outcome
         file = open("candidate.txt", "w")
